@@ -5,12 +5,17 @@ import cats.implicits._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object NoMonads {
+import Domain._
 
+
+object Domain {
   class UserId
   class User
   class Address
+}
 
+/* The task */
+object NoMonads {
   // Service API
   def findLastSubscriber(): UserId = ???
   def findUser(id: UserId): User = ???
@@ -19,22 +24,16 @@ object NoMonads {
   def findAddressOfLastSubscriber(): Address = {
     findAddress(findUser(findLastSubscriber()))
   }
-
 }
 
+/* The reality */
 object OptionMonad {
-
-  class UserId
-  class User
-  class Address
-
-
   // Service API
   def findLastSubscriber(): Option[UserId] = ???
   def findUser(id: UserId): Option[User] = ???
   def findAddress(user: User): Option[Address] = ???
 
-
+  /* Not a solution */
   def findAddressOfLastSubscriber(): Option[Address] = {
     val id = findLastSubscriber()
     if (id.nonEmpty) {
@@ -49,12 +48,14 @@ object OptionMonad {
     }
   }
 
+  /* Monadic solution */
   def findAddressOfLastSubscriberMonadic(): Option[Address] = {
     findLastSubscriber()
       .flatMap(id => findUser(id))
       .flatMap(user => findAddress(user))
   }
 
+  /* Syntax sugar */
   def findAddressOfLastSubscriberFor(): Option[Address] = {
     for {
       id <- findLastSubscriber()
@@ -62,21 +63,16 @@ object OptionMonad {
       address <- findAddress(user)
     } yield address
   }
-
 }
 
+/* Another monad (*) */
 object FutureMonad {
-
-  class UserId
-  class User
-  class Address
-
-
   // Service API
   def findLastSubscriber(): Future[UserId] = ???
   def findUser(id: UserId): Future[User] = ???
   def findAddress(user: User): Future[Address] = ???
 
+  /* Monadic code is the same */
   def findAddressOfLastSubscriberFor(): Future[Address] = {
     for {
       id <- findLastSubscriber()
@@ -84,18 +80,16 @@ object FutureMonad {
       address <- findAddress(user)
     } yield address
   }
-
 }
 
-// F can be Option/Either/Future/Future of Either etc
+
+/**
+ * We can abstract over Monad
+ *
+ * F can be Option/Either/Future/Future of Either etc
+ */
 
 class AnyMonad[F[_]: Monad] {
-
-  class UserId
-  class User
-  class Address
-
-
   // Service API
   def findLastSubscriber(): F[UserId] = ???
   def findUser(id: UserId): F[User] = ???
@@ -108,7 +102,6 @@ class AnyMonad[F[_]: Monad] {
       address <- findAddress(user)
     } yield address
   }
-
 }
 
 
@@ -141,4 +134,3 @@ object MonadLaws {
 
   monad.flatMap(f).flatMap(g) == monad.flatMap(x => f(x).flatMap(g)) // Associativity
 }
-
